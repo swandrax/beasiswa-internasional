@@ -5,8 +5,6 @@ namespace App\Events;
 use App\Models\Scholarship;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PresenceChannel;
-use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
@@ -15,13 +13,13 @@ class ScholarshipUpdated implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public $scholarship;
-    public $action;
+    public Scholarship $scholarship;
+    public string $action;
 
     /**
      * Create a new event instance.
      */
-    public function __construct(Scholarship $scholarship, $action = 'updated')
+    public function __construct(Scholarship $scholarship, string $action = 'updated')
     {
         $this->scholarship = $scholarship;
         $this->action = $action;
@@ -30,7 +28,7 @@ class ScholarshipUpdated implements ShouldBroadcast
     /**
      * Get the channels the event should broadcast on.
      *
-     * @return array<int, \Illuminate\Broadcasting\Channel>
+     * @return array<int, Channel>
      */
     public function broadcastOn(): array
     {
@@ -39,7 +37,7 @@ class ScholarshipUpdated implements ShouldBroadcast
         ];
     }
     
-    public function broadcastAs()
+    public function broadcastAs(): string
     {
         return 'scholarship.' . $this->action;
     }

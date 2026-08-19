@@ -8,7 +8,7 @@ use Tests\TestCase;
 
 class ScholarshipCrudTest extends TestCase
 {
-    use \Illuminate\Foundation\Testing\RefreshDatabase;
+    use RefreshDatabase;
 
     public function test_can_create_scholarship()
     {
