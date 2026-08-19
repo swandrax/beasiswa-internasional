@@ -39,6 +39,12 @@
                         </select>
                     </div>
                     
+                    <div class="mb-3" id="adminCodeWrapper" style="display: none;">
+                        <label for="admin_code" class="form-label text-danger fw-bold">Kode Registrasi Admin</label>
+                        <input type="text" id="admin_code" name="admin_code" class="form-control" placeholder="Masukkan kode rahasia admin">
+                        <small class="text-muted">Diperlukan hanya untuk mendaftar sebagai Administrator.</small>
+                    </div>
+                    
                     <div class="d-grid">
                         <button type="submit" class="btn btn-primary">Daftar Sekarang</button>
                     </div>
@@ -51,4 +57,31 @@
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const roleSelect = document.getElementById('role');
+        const adminCodeWrapper = document.getElementById('adminCodeWrapper');
+        const adminCodeInput = document.getElementById('admin_code');
+
+        function toggleAdminCode() {
+            if (roleSelect.value === 'admin') {
+                adminCodeWrapper.style.display = 'block';
+                adminCodeInput.setAttribute('required', 'required');
+            } else {
+                adminCodeWrapper.style.display = 'none';
+                adminCodeInput.removeAttribute('required');
+                adminCodeInput.value = '';
+            }
+        }
+
+        roleSelect.addEventListener('change', toggleAdminCode);
+        
+        // Trigger on load in case of old value
+        if ("{{ old('role') }}" === 'admin') {
+            roleSelect.value = 'admin';
+        }
+        toggleAdminCode();
+    });
+</script>
 @endsection

@@ -13,7 +13,14 @@ class AuthController extends Controller
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
             'role' => 'in:admin,user',
+            'admin_code' => 'required_if:role,admin',
         ]);
+
+        if (isset($validated['role']) && $validated['role'] === 'admin') {
+            if ($request->input('admin_code') !== 'ADMIN123') {
+                return response()->json(['message' => 'Kode registrasi admin tidak valid.'], 403);
+            }
+        }
 
         $user = \App\Models\User::create([
             'name' => $validated['name'],
