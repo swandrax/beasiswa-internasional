@@ -1,58 +1,103 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Beasiswa Internasional API
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Sistem manajemen beasiswa berskala internasional dengan fitur RESTful API, Role-Based Access Control (RBAC), autentikasi yang aman, serta kapabilitas real-time menggunakan arsitektur Modern MVC.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## 🏗️ Metode & Arsitektur (Architecture)
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+Proyek ini menggunakan beberapa metode dan arsitektur pengembangan modern untuk menjaga stabilitas dan skalabilitas:
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### 1. MVC (Model-View-Controller)
+Arsitektur ini memisahkan antara logika bisnis (Controller), manipulasi data (Model), dan presentasi (View/JSON Response). 
+- **Model**: Menangani definisi skema dan relasi basis data (`User`, `Scholarship`).
+- **Controller**: Memproses *request* dari *client*, menjalankan validasi, dan memanggil *model* (`AuthController`, `ScholarshipController`).
+- **View**: Di dalam API, *view* digantikan oleh format respons JSON standar.
 
-## Learning Laravel
+### 2. Role-Based Access Control (RBAC)
+Keamanan hierarki sistem menggunakan pendekatan RBAC. Pengguna dibagi menjadi dua tipe:
+- `Admin`: Memiliki hak penuh (*Create, Update, Delete*) pada data beasiswa.
+- `User`: Hanya memiliki hak akses membaca (*Read*) data beasiswa.
+Implementasinya diterapkan di tingkat *Middleware* (`RoleMiddleware.php`) untuk mencegat *request* sebelum sampai ke proses bisnis.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### 3. RESTful API Design
+Seluruh rute (*routes*) mengikuti prinsip REST:
+- Menggunakan HTTP Methods yang semantik (`GET`, `POST`, `PUT`, `DELETE`).
+- Menggunakan format JSON (*Stateless*) dengan token otorisasi Bearer.
+- Kode status HTTP yang sesuai (contoh: `200 OK`, `201 Created`, `204 No Content`, `403 Forbidden`).
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+---
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+## 🚀 Implementasi Fitur Utama
 
-## Agentic Development
+### 1. Autentikasi API (Laravel Sanctum)
+Sistem tidak menggunakan penyimpanan *session-based* (*cookie*). Implementasi *login* menghasilkan `Personal Access Token` yang valid dan dikembalikan kepada *client* sebagai parameter otorisasi di *header* HTTP.
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+### 2. Real-Time Database (WebSockets - Laravel Reverb)
+Setiap mutasi basis data (*Create, Update, Delete*) pada tabel beasiswa akan menerbitkan (memancarkan) kejadian / *Event* ke *message broker*.
+- **Metode**: *Event Broadcasting* (Pub/Sub Pattern).
+- **Proses**: `ScholarshipController` mengeksekusi *command* ke basis data -> `ScholarshipUpdated` event ditembakkan -> *Laravel Reverb* mendistribusikan *payload* JSON tersebut ke seluruh pendengar di kanal (Channel) `scholarships`.
 
-```bash
-composer require laravel/boost --dev
+### 3. Asynchronous Pattern (Webhook & Polling)
+Proyek ini mengadopsi mekanisme *Push* dan *Pull* untuk mendistribusikan informasi kepada layanan eksternal.
+- **Webhook**: Sistem menunggu *HTTP Payload* masuk dan mendaftarkannya, tanpa memblokir antarmuka (*event-driven*).
+- **Polling**: Endpoint statis untuk menarik data berkala menggunakan stempel waktu (*Timestamp based fetch*).
 
-php artisan boost:install
-```
+---
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+## 🧮 Algoritma & Optimasi Kompleksitas (Big O)
 
-## Contributing
+Optimasi merupakan hal penting di saat ukuran data bertambah (Data Skala Besar / *Big Data*). Berikut adalah pendekatan algoritma yang diterapkan:
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### 1. SSR Pagination (O(1) Data Retrieval vs O(N))
+- **Masalah**: Pengambilan data massal seperti `Scholarship::all()` memiliki kompleksitas memori **O(N)**. Saat N = 1.000.000, *server* akan *crash*.
+- **Solusi**: Menggunakan `Scholarship::paginate(10)`. Di tingkat SQL, ia diuraikan menjadi kueri `LIMIT` dan `OFFSET`. Kompleksitas pemrosesan data (waktu komputasi PHP) direduksi menjadi **O(1)** karena selalu konstan (menampilkan maksimal 10 baris pada waktu tertentu).
 
-## Code of Conduct
+### 2. Solusi Kueri N+1 & Lazy Loading
+- **Masalah**: Saat menampilkan 10 data beasiswa dan mengambil relasi (*contoh: entitas pembuat*), *Lazy Loading* memicu **O(N+1)** *Database Queries*. (1 kueri utama + 10 kueri tambahan = 11 kueri).
+- **Solusi Algoritma**: *Eager Loading* menggunakan `with()`. Ia menggabungkan kueri menggunakan klausul `IN ()`. Kompleksitas turun menjadi **O(1)** (selalu 2 kueri, berapapun jumlah barisnya).
+- **Pencegahan (Strict Mode)**: Fitur `Model::preventLazyLoading(! app()->isProduction())` diaktifkan di lapisan `AppServiceProvider` untuk memaksa program menghasilkan *Error* (*Exception*) ketimbang menyebabkan *N+1 Queries*.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+---
 
-## Security Vulnerabilities
+## 💻 Panduan Instalasi dan Menjalankan Proyek
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+1. **Clone repositori ini**:
+   ```bash
+   git clone https://github.com/swandrax/beasiswa-internasional.git
+   cd beasiswa-internasional
+   ```
 
-## License
+2. **Instal seluruh *dependencies***:
+   ```bash
+   composer install
+   ```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+3. **Pengaturan *Environment***:
+   Salin berkas *environment* dan sesuaikan kredensial basis data Anda:
+   ```bash
+   cp .env.example .env
+   php artisan key:generate
+   ```
+
+4. **Migrasi Basis Data**:
+   Ini akan mengonstruksi skema di basis data Anda:
+   ```bash
+   php artisan migrate
+   ```
+
+5. **Jalankan *Server***:
+   Anda perlu dua terminal yang berjalan paralel jika menggunakan WebSockets.
+   ```bash
+   # Terminal 1: Server Utama HTTP
+   php artisan serve
+
+   # Terminal 2: Server WebSockets Reverb (Untuk Real-time)
+   php artisan reverb:start
+   ```
+
+6. **Pengujian Internal (Testing)**:
+   Proyek ini menggunakan *PHPUnit* bawaan.
+   ```bash
+   php artisan test
+   ```
